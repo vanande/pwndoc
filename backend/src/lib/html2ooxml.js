@@ -56,6 +56,11 @@ function html2ooxml(html, style = '') {
             else if (tag === "strike" || tag === "s") {
                 cRunProperties.strike = true
             }
+            else if (tag === "a" || tag === "p") {
+                // If we find "a" tag store the link tag in cRunProperties
+                // Put href content in cRunProperties.link 
+                cRunProperties.link = attribs.href
+            }
             else if (tag === "br") {
                 if (inCodeBlock) {
                     paragraphs.push(cParagraph)
@@ -93,8 +98,18 @@ function html2ooxml(html, style = '') {
 
         ontext(text) {
             if (text && cParagraph) {
-                cRunProperties.text = text
-                cParagraph.addChildElement(new docx.TextRun(cRunProperties))
+                 // If there is a "a" tag detected
+                if ( cRunProperties.link ){
+                    // Inject link as word field character row by row
+                    cParagraph.addChildElement(docx.ImportedXmlComponent.fromXmlString('<w:r><w:fldChar w:fldCharType="begin"/></w:r>').root[0])
+                    cParagraph.addChildElement(docx.ImportedXmlComponent.fromXmlString(`<w:r><w:instrText xml:space="preserve"> HYPERLINK "${cRunProperties.link}" </w:instrText></w:r>`).root[0])
+                    cParagraph.addChildElement(docx.ImportedXmlComponent.fromXmlString('<w:r><w:fldChar w:fldCharType="separate"/></w:r>').root[0])
+                    cParagraph.addChildElement(docx.ImportedXmlComponent.fromXmlString(`<w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>${text}</w:t></w:r>`).root[0])
+                    cParagraph.addChildElement(docx.ImportedXmlComponent.fromXmlString('<w:r><w:fldChar w:fldCharType="end"/></w:r>').root[0])
+                } else {
+                    cRunProperties.text = text
+                    cParagraph.addChildElement(new docx.TextRun(cRunProperties))
+                }
             }
         },
 
@@ -117,6 +132,9 @@ function html2ooxml(html, style = '') {
             }
             else if (tag === "strike" || tag === "s") {
                 delete cRunProperties.strike
+            }
+            else if (tag === "a") {
+                delete cRunProperties.link
             }
             else if (tag === "ul" || tag === "ol") {
                 list_state.pop()

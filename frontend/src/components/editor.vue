@@ -88,6 +88,13 @@
                         <q-tooltip :delay="500" content-class="text-bold">Strikethrough</q-tooltip>
                         <q-icon name="format_strikethrough" />
                     </q-btn>
+                    <!-- LINK BUTTON-->
+                    <q-btn flat size="sm" dense
+                    @click="setUrl(commands.link)"
+                    >
+                        <q-tooltip :delay="500" content-class="text-bold">Link</q-tooltip>
+                        <q-icon name="link" />
+                    </q-btn>
                 </div>
                 <q-separator vertical class="q-mx-sm" v-if="toolbar.indexOf('marks') !== -1" />
 
@@ -208,6 +215,7 @@ import {
   Code,
   Italic,
   Strike,
+  Link,
   Underline,
   History,
   TrailingNode
@@ -268,6 +276,7 @@ export default {
                     new Code(),
                     new Italic(),
                     new Strike(),
+                    new Link(),
                     new Underline(),
                     new History(),
                     new CustomImage(),
@@ -362,6 +371,55 @@ export default {
     },
 
     methods: {
+
+
+
+        getSelectionText() {
+            var text = "";
+            if (window.getSelection) {
+                text = window.getSelection().toString();
+            } else if (document.selection && document.selection.type != "Control") {
+                text = document.selection.createRange().text;
+            }
+            console.log(text);
+            return text;
+        },
+        
+        linkTo (input, url) {
+            return '<w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+                + '<w:r><w:instrText xml:space="preserve"> HYPERLINK "' + url + '" </w:instrText></w:r>'
+                + '<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+                + '<w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr>'
+                + '<w:t>' + input + '</w:t>'
+                + '</w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>';
+        },
+
+        setUrl(command) {
+            const state = this.editor.state
+            // get marks, if any from selected area
+            const { from, to } = state.selection
+            let marks = []
+            state.doc.nodesBetween(from, to, (node) => {
+                marks = [...marks, ...node.marks]
+            })
+            const mark = marks.find((markItem) => markItem.type.name === 'link')
+            let urlSetting = ''
+            if (mark && mark.attrs.href) {
+                const presetURL = mark.attrs.href
+                prompt('Please update url', presetURL) // let a user see the previously set URL
+            } else {
+                urlSetting = prompt('Please add url', '') // a clean prompt, has had no anchor
+            }
+            command({ href: urlSetting })
+            
+            let SelectedText = this.getSelectionText();
+            console.log(SelectedText)
+            this.linkTo(SelectedText, urlSetting);
+        },
+
+
+
+
         importImage(files) {
             var file = files[0];
             var fileReader = new FileReader();
